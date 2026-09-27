@@ -159,7 +159,12 @@ function seed(){
     W(3,"Skirting boards & radiators"),W(3,"Vacuum therapy offices 2 & 3","tho2"),
     W(4,"Descale toilets, sinks & urinals"),W(4,"Mirrors, dispensers & bin liners stock check")
   ];
-  return {v:3,daily,weekly,rooms:ROOMS,timetable:{},ticks:{week:"",days:{}},wdone:{week:"",ids:[]}};
+  return {v:4,daily,weekly,rooms:ROOMS,timetable:baseTimetable(),ticks:{week:"",days:{}},wdone:{week:"",ids:[]}};
+}
+function baseTimetable(){
+  const t={s2:{},h2:{1:[{s:"15:00",e:"16:00",n:"Chess club"}]}};
+  for(let d=0;d<5;d++)t.s2[d]=[{s:"15:00",e:"17:00",n:"Detention"}];
+  return t;
 }
 function roomName(id){const r=((S&&S.rooms)||[]).find(x=>x.id===id)||ROOMS.find(x=>x.id===id);return r?r.name:id}
 
@@ -189,6 +194,14 @@ if(S.v<3){
   }
   if(!S.weekly.some(w=>/^Windows/.test(w.text)))S.weekly.unshift(W(0,"Windows – A block"),W(1,"Windows – B block"));
   S.v=3;
+}
+if(S.v<4){
+  const b=baseTimetable();S.timetable=S.timetable||{};
+  for(const r in b)for(const d in b[r]){
+    S.timetable[r]=S.timetable[r]||{};const list=S.timetable[r][d]=S.timetable[r][d]||[];
+    b[r][d].forEach(x=>{if(!list.some(y=>y.s===x.s&&y.n===x.n))list.push(x)});
+  }
+  S.v=4;
 }
 save();
 
