@@ -161,7 +161,7 @@ function seed(){
   ];
   return {v:2,daily,weekly,rooms:ROOMS,timetable:{},ticks:{week:"",days:{}},wdone:{week:"",ids:[]}};
 }
-function roomName(id){const r=(S?S.rooms:ROOMS).find(x=>x.id===id);return r?r.name:id}
+function roomName(id){const r=((S&&S.rooms)||[]).find(x=>x.id===id)||ROOMS.find(x=>x.id===id);return r?r.name:id}
 
 /* ---------- storage ---------- */
 let S=null;
