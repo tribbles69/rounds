@@ -112,7 +112,7 @@ const KEY="rounds-v1";
 /* ---------- starting data ---------- */
 const ROOMS=[
   ["h1","H1","A"],["h2","H2","A"],["h3","H3","A"],["h4","H4","A"],
-  ["ao1","A Office 1","A"],["ao2","A Office 2","A"],["ao3","A Office 3","A"],
+  ["ao1","Deputy Head office","A"],["ao2","Exams office","A"],["ao3","Cover office","A"],["ao4","Lead Head of Year office","A"],
   ["gt","Girls toilets","A"],["ast","A Staff toilet","A"],["acor","A corridor","A"],
   ["s1","S1","B"],["s2","S2","B"],["bus","Business ICT","B"],
   ["bt","Boys toilets","B"],["bst","B Staff toilet","B"],
@@ -120,7 +120,7 @@ const ROOMS=[
   ["th","Therapy room","B"],["tho1","Therapy office (daily)","B"],["tho2","Therapy office 2","B"],["tho3","Therapy office 3","B"],
   ["l1","Landing 1 (S1/Business)","B"],["l2","Landing 2 (Pastoral/S2)","B"]
 ].map(([id,name,block])=>({id,name,block}));
-const TIMETABLED=["h1","h2","h3","h4","s1","s2","bus","th","tho1","tho2","tho3","p1","p2","p3","ao1","ao2","ao3"];
+const TIMETABLED=["h1","h2","h3","h4","s1","s2","bus","th","tho1","tho2","tho3","p1","p2","p3","ao1","ao2","ao3","ao4"];
 
 let _n=0;const nid=()=>Date.now().toString(36)+(_n++).toString(36);
 const D=(phase,text,room)=>({id:nid(),phase,text,room:room||""});
@@ -139,7 +139,7 @@ function seed(){
   const P4="5 · Vacuum A block";
   daily.push(D(P4,"Vacuum H1","h1"),D(P4,"Vacuum H3","h3"),D(P4,"Vacuum H4","h4"),
              D(P4,"Vacuum H2, out into the corridor","h2"),
-             D(P4,"Vacuum A Office 1","ao1"),D(P4,"Vacuum A Office 2","ao2"),D(P4,"Vacuum A Office 3","ao3"));
+             D(P4,"Vacuum Deputy Head office","ao1"),D(P4,"Vacuum Exams office","ao2"),D(P4,"Vacuum Cover office","ao3"),D(P4,"Vacuum Lead Head of Year office","ao4"));
   const P5="6 · Business room power run";
   daily.push(D(P5,"Vacuum Business ICT","bus"),D(P5,"Vacuum Landing 1","l1"),D(P5,"Vacuum rest of A block corridor","acor"));
   const P6="7 · Therapy room";
@@ -153,13 +153,13 @@ function seed(){
   ["gt","ast","bt","bst"].forEach(r=>daily.push(D(P9,"Mop "+roomName(r),r)));
 
   const weekly=[
-    W(0,"Dust window sills – A block"),
-    W(1,"Dust window sills – B block"),
+    W(0,"Windows – A block"),W(0,"Dust window sills – A block"),
+    W(1,"Windows – B block"),W(1,"Dust window sills – B block"),
     W(2,"Door glass & handles – both blocks"),W(2,"Spot-clean walls & switches"),
     W(3,"Skirting boards & radiators"),W(3,"Vacuum therapy offices 2 & 3","tho2"),
     W(4,"Descale toilets, sinks & urinals"),W(4,"Mirrors, dispensers & bin liners stock check")
   ];
-  return {v:2,daily,weekly,rooms:ROOMS,timetable:{},ticks:{week:"",days:{}},wdone:{week:"",ids:[]}};
+  return {v:3,daily,weekly,rooms:ROOMS,timetable:{},ticks:{week:"",days:{}},wdone:{week:"",ids:[]}};
 }
 function roomName(id){const r=((S&&S.rooms)||[]).find(x=>x.id===id)||ROOMS.find(x=>x.id===id);return r?r.name:id}
 
@@ -177,6 +177,18 @@ if(!S.v||S.v<2){
   }
   S.weekly=S.weekly.filter(w=>!/^Wipe desks & tables/.test(w.text));
   S.ticks={week:"",days:{}};delete S.done;S.v=2;
+}
+if(S.v<3){
+  const names={ao1:"Deputy Head office",ao2:"Exams office",ao3:"Cover office"};
+  S.rooms.forEach(r=>{if(names[r.id])r.name=names[r.id]});
+  if(!S.rooms.some(r=>r.id==="ao4")){const i=S.rooms.findIndex(r=>r.id==="ao3");S.rooms.splice(i<0?S.rooms.length:i+1,0,{id:"ao4",name:"Lead Head of Year office",block:"A"})}
+  S.daily.forEach(d=>{const m=/^Vacuum A Office ([123])$/.exec(d.text);if(m)d.text="Vacuum "+names["ao"+m[1]]});
+  if(!S.daily.some(d=>d.room==="ao4")){
+    const i=S.daily.findIndex(d=>d.room==="ao3");const ph=i<0?"5 · Vacuum A block":S.daily[i].phase;
+    S.daily.splice(i<0?S.daily.length:i+1,0,D(ph,"Vacuum Lead Head of Year office","ao4"));
+  }
+  if(!S.weekly.some(w=>/^Windows/.test(w.text)))S.weekly.unshift(W(0,"Windows – A block"),W(1,"Windows – B block"));
+  S.v=3;
 }
 save();
 
