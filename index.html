@@ -132,32 +132,34 @@ function seed(){
   ["h1","h2","h3","h4","s1","s2","bus"].forEach(r=>daily.push(D(P1,roomName(r)+" bin",r)));
   const P2="2 · Corridor bins";
   [1,2,3].forEach(i=>daily.push(D(P2,"Corridor bin "+i,"")));
-  const P3="3 · Chairs on tables";
+  const P2b="3 · Wipe tables";
+  ["h1","h2","h3","h4","s1","s2","bus"].forEach(r=>daily.push(D(P2b,"Wipe "+roomName(r)+" tables",r)));
+  const P3="4 · Chairs on tables";
   ["h1","h2","h3","h4","s1","s2","bus"].forEach(r=>daily.push(D(P3,roomName(r)+" chairs up",r)));
-  const P4="4 · Vacuum A block";
+  const P4="5 · Vacuum A block";
   daily.push(D(P4,"Vacuum H1","h1"),D(P4,"Vacuum H3","h3"),D(P4,"Vacuum H4","h4"),
              D(P4,"Vacuum H2, out into the corridor","h2"),
              D(P4,"Vacuum A Office 1","ao1"),D(P4,"Vacuum A Office 2","ao2"),D(P4,"Vacuum A Office 3","ao3"));
-  const P5="5 · Business room power run";
+  const P5="6 · Business room power run";
   daily.push(D(P5,"Vacuum Business ICT","bus"),D(P5,"Vacuum Landing 1","l1"),D(P5,"Vacuum rest of A block corridor","acor"));
-  const P6="6 · Therapy room";
+  const P6="7 · Therapy room";
   daily.push(D(P6,"Vacuum therapy room","th"),D(P6,"Vacuum daily-use therapy office","tho1"));
-  const P7="7 · Sweep science";
+  const P7="8 · Sweep science";
   daily.push(D(P7,"Sweep S1","s1"),D(P7,"Sweep S2","s2"));
-  const P8="8 · Pastoral & final landing";
+  const P8="9 · Pastoral & final landing";
   daily.push(D(P8,"Vacuum Pastoral 1","p1"),D(P8,"Vacuum Pastoral 2","p2"),D(P8,"Vacuum Pastoral 3","p3"),D(P8,"Vacuum Landing 2","l2"));
-  const P9="9 · Toilets";
+  const P9="10 · Toilets";
   ["gt","ast","bt","bst"].forEach(r=>daily.push(D(P9,"Clean "+roomName(r),r)));
   ["gt","ast","bt","bst"].forEach(r=>daily.push(D(P9,"Mop "+roomName(r),r)));
 
   const weekly=[
-    W(0,"Wipe desks & tables – A block classrooms"),W(0,"Dust window sills – A block"),
-    W(1,"Wipe desks & tables – S1, S2, Business"),W(1,"Dust window sills – B block"),
+    W(0,"Dust window sills – A block"),
+    W(1,"Dust window sills – B block"),
     W(2,"Door glass & handles – both blocks"),W(2,"Spot-clean walls & switches"),
     W(3,"Skirting boards & radiators"),W(3,"Vacuum therapy offices 2 & 3","tho2"),
     W(4,"Descale toilets, sinks & urinals"),W(4,"Mirrors, dispensers & bin liners stock check")
   ];
-  return {daily,weekly,rooms:ROOMS,timetable:{},done:{date:"",ids:[]},wdone:{week:"",ids:[]}};
+  return {v:2,daily,weekly,rooms:ROOMS,timetable:{},ticks:{week:"",days:{}},wdone:{week:"",ids:[]}};
 }
 function roomName(id){const r=(S?S.rooms:ROOMS).find(x=>x.id===id);return r?r.name:id}
 
@@ -165,19 +167,30 @@ function roomName(id){const r=(S?S.rooms:ROOMS).find(x=>x.id===id);return r?r.na
 let S=null;
 function load(){try{const t=localStorage.getItem(KEY);if(t)return JSON.parse(t)}catch(e){}return null}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
-S=load()||seed();save();
+S=load()||seed();
+if(!S.v||S.v<2){
+  const labels={"4 · Vacuum A block":"5 · Vacuum A block","5 · Business room power run":"6 · Business room power run","6 · Therapy room":"7 · Therapy room","7 · Sweep science":"8 · Sweep science","8 · Pastoral & final landing":"9 · Pastoral & final landing","9 · Toilets":"10 · Toilets","3 · Chairs on tables":"4 · Chairs on tables"};
+  S.daily.forEach(d=>{if(labels[d.phase])d.phase=labels[d.phase]});
+  if(!S.daily.some(d=>/^Wipe .* tables$/.test(d.text))){
+    let at=S.daily.findIndex(d=>d.phase==="4 · Chairs on tables");if(at<0)at=S.daily.length;
+    S.daily.splice(at,0,...["h1","h2","h3","h4","s1","s2","bus"].map(r=>D("3 · Wipe tables","Wipe "+roomName(r)+" tables",r)));
+  }
+  S.weekly=S.weekly.filter(w=>!/^Wipe desks & tables/.test(w.text));
+  S.ticks={week:"",days:{}};delete S.done;S.v=2;
+}
+save();
 
 /* ---------- dates ---------- */
 const pad=n=>String(n).padStart(2,"0");
 const ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
-function weekKey(d){const x=new Date(d);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return ymd(x)}
+function weekKey(d){const x=new Date(d);const g=x.getDay();if(g===6)x.setDate(x.getDate()+2);else if(g===0)x.setDate(x.getDate()+1);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return ymd(x)}
 function todayIdx(){const g=new Date().getDay();return g>=1&&g<=5?g-1:-1}
 const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
 const toMin=t=>{const[h,m]=t.split(":").map(Number);return h*60+m};
 
 function rollover(){
   const d=new Date();
-  if(S.done.date!==ymd(d)){S.done={date:ymd(d),ids:[]}}
+  if(S.ticks.week!==weekKey(d)){S.ticks={week:weekKey(d),days:{}}}
   if(S.wdone.week!==weekKey(d)){S.wdone={week:weekKey(d),ids:[]}}
   save();
 }
@@ -214,14 +227,14 @@ function dayTabs(){
 function renderToday(){
   rollover();
   const isToday=view===todayIdx();
-  const doneSet=new Set(isToday?S.done.ids:[]);
+  const doneSet=new Set(S.ticks.days[view]||[]);
   const wSet=new Set(S.wdone.ids);
   const weekly=S.weekly.filter(w=>w.day===view);
   const total=S.daily.length+weekly.length;
   const done=S.daily.filter(x=>doneSet.has(x.id)).length+weekly.filter(x=>wSet.has(x.id)).length;
   const pct=total?Math.round(done/total*100):0;
   const dname=["Monday","Tuesday","Wednesday","Thursday","Friday"][view];
-  header(isToday?"Today":dname, isToday?`${dname} · ${done}/${total} done`:(todayIdx()<0?"Weekend – preview of "+dname:"Preview – ticks only count on the day"), isToday?pct:null);
+  header(isToday?"Today":dname, `${isToday?dname+" · ":""}${done}/${total} done`, pct);
 
   let h=dayTabs();
 
@@ -247,7 +260,7 @@ function renderToday(){
   h+=weekly.length?weekly.map(it=>itemHTML(it,wSet.has(it.id),"w")).join(""):'<div class="empty">No weekly jobs set for this day</div>';
   h+="</div>";
 
-  if(isToday&&total&&done===total)h+='<div class="done-banner">All done – nothing missed 👊</div>';
+  if(total&&done===total)h+='<div class="done-banner">All done – nothing missed 👊</div>';
   $("#main").innerHTML=h;
 }
 function itemHTML(it,done,kind){
@@ -326,8 +339,8 @@ document.addEventListener("click",e=>{
   if(ds.day){view=+ds.day;render();return}
   if(ds.mode){editMode=ds.mode;render();return}
   if(ds.tick){
-    if(view!==todayIdx())return;
-    const[k,id]=ds.tick.split(":");const arr=k==="d"?S.done.ids:S.wdone.ids;
+    const[k,id]=ds.tick.split(":");
+    const arr=k==="d"?(S.ticks.days[view]=S.ticks.days[view]||[]):S.wdone.ids;
     const i=arr.indexOf(id);i>=0?arr.splice(i,1):arr.push(id);
     if(navigator.vibrate)navigator.vibrate(12);
     save();render();return;
